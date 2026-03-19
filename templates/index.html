@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>黄金投资面板</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f8f7f3;
+      --panel: #ffffff;
+      --card: #f6f4ee;
+      --line: #e6e1d4;
+      --text: #2c2a28;
+      --subtext: #7c7568;
+      --gold: #c99b3f;
+      --gold-dark: #9e7728;
+      --danger: #d9534f;
+      --ok: #3d8b4f;
+      --shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 8% 8%, #fff7dc 0%, #f8f7f3 45%, #f0ede2 100%);
+      color: var(--text);
+    }
+    .container { max-width: 1240px; margin: 0 auto; padding: 28px 18px 40px; }
+    .hero {
+      background: linear-gradient(120deg, #fff8df 0%, #fffdf3 60%, #fff8dc 100%);
+      border: 1px solid #ead9ae;
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .hero h1 { margin: 0; font-size: 30px; letter-spacing: 0.4px; }
+    .hero p { margin: 10px 0 0; color: #6a604f; }
+    .grid-two { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .title {
+      margin: 0 0 12px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .title .hint { color: var(--subtext); font-size: 13px; font-weight: 500; }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .controls input, .controls textarea {
+      border: 1px solid #d9d3c5;
+      background: #fffdf9;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+    .controls input:focus, .controls textarea:focus { border-color: #d4b66f; box-shadow: 0 0 0 4px rgba(212, 182, 111, 0.16); }
+    .controls input { width: 190px; }
+    .controls textarea { min-width: 250px; min-height: 42px; resize: vertical; }
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 15px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-gold { background: linear-gradient(135deg, #d8af58, #bc8f39); color: #fff; box-shadow: 0 10px 20px rgba(188, 143, 57, 0.26); }
+    .btn-soft { background: #efe8d7; color: #685c45; }
+    .btn-danger { background: #fbe4e3; color: var(--danger); }
+    .status { min-height: 22px; margin-top: 10px; color: #6b7f9d; font-size: 14px; }
+    .cards { margin-top: 14px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .metric {
+      border-radius: 14px;
+      border: 1px solid #efe8d8;
+      background: var(--card);
+      padding: 12px;
+    }
+    .metric .label { color: var(--subtext); font-size: 12px; margin-bottom: 4px; }
+    .metric .value { font-size: 24px; font-weight: 760; color: #2a2519; }
+    .reason {
+      border-radius: 14px;
+      background: #fff8df;
+      border: 1px solid #f0dfaf;
+      color: #71592e;
+      margin-top: 12px;
+      padding: 12px;
+      line-height: 1.5;
+      font-size: 14px;
+      min-height: 48px;
+    }
+    .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .chart-box { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: 14px; min-height: 320px; }
+    .chart-box canvas { width: 100%; max-height: 290px; }
+    .records-top { margin-top: 4px; }
+    .records-summary { margin-top: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .table-shell {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: auto;
+      background: #fff;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 860px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #f0ebe0; font-size: 14px; text-align: left; }
+    thead th { background: #f8f3e8; color: #6f6554; font-weight: 700; position: sticky; top: 0; }
+    tbody tr:hover { background: #fffcf4; }
+    #importFile { display: none; }
+    @media (max-width: 1060px) {
+      .grid-two { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .records-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .cards, .records-summary { grid-template-columns: 1fr; }
+      .controls input, .controls textarea { width: 100%; min-width: 100%; }
+      .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>黄金投资策略仪表盘</h1>
+      <p>人民币计价｜自动抓取行情｜本地持久化记录（支持导入导出）</p>
+    </section>
+
+    <section class="grid-two">
+      <div class="panel">
+        <h2 class="title">本月策略计算 <span class="hint">单位：¥/g</span></h2>
+        <div class="controls">
+          <input id="budgetInput" type="number" min="1" step="1" value="1000" placeholder="每月预算（人民币）">
+          <button id="runButton" class="btn btn-gold">启动策略计算</button>
+        </div>
+        <div id="strategyStatus" class="status"></div>
+        <div class="cards">
+          <div class="metric"><div class="label">日期</div><div id="dateVal" class="value">-</div></div>
+          <div class="metric"><div class="label">金价（¥/g）</div><div id="priceVal" class="value">-</div></div>
+          <div class="metric"><div class="label">MA120（¥/g）</div><div id="maVal" class="value">-</div></div>
+          <div class="metric"><div class="label">Bias</div><div id="biasVal" class="value">-</div></div>
+          <div class="metric"><div class="label">RSI(14)</div><div id="rsiVal" class="value">-</div></div>
+          <div class="metric"><div class="label">建议买入（¥）</div><div id="suggestedVal" class="value">-</div></div>
+        </div>
+        <div id="reasonVal" class="reason"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="title">新增投资记录 <span class="hint">本地浏览器保存</span></h2>
+        <div class="controls records-top">
+          <input id="recordDateInput" type="date">
+          <input id="recordAmountInput" type="number" min="0.01" step="0.01" placeholder="金额（¥）">
+          <input id="recordPriceInput" type="number" min="0.0001" step="0.0001" placeholder="单价（¥/g，可选）">
+          <input id="recordGramsInput" type="number" min="0.0001" step="0.0001" placeholder="克重（g，可选）">
+          <textarea id="recordNoteInput" placeholder="备注（可选）"></textarea>
+          <button id="addRecordButton" class="btn btn-gold">保存记录</button>
+          <button id="exportButton" class="btn btn-soft">导出记录</button>
+          <button id="importButton" class="btn btn-soft">导入记录</button>
+          <input id="importFile" type="file" accept="application/json">
+        </div>
+        <div id="recordStatus" class="status"></div>
+        <div class="records-summary">
+          <div class="metric"><div class="label">累计投入（¥）</div><div id="sumInvestedVal" class="value">-</div></div>
+          <div class="metric"><div class="label">累计克重（g）</div><div id="sumGramsVal" class="value">-</div></div>
+          <div class="metric"><div class="label">平均成本（¥/g）</div><div id="avgCostVal" class="value">-</div></div>
+          <div class="metric"><div class="label">记录条数</div><div id="countVal" class="value">-</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chart-grid">
+      <div class="chart-box"><canvas id="priceChart"></canvas></div>
+      <div class="chart-box"><canvas id="rsiChart"></canvas></div>
+    </section>
+
+    <section class="chart-grid">
+      <div class="chart-box"><canvas id="cumulativeChart"></canvas></div>
+      <div class="chart-box"><canvas id="monthlyChart"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="title">投资记录明细 <span class="hint">可删除，支持跨设备导入</span></h2>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>金额（¥）</th>
+              <th>单价（¥/g）</th>
+              <th>克重（g）</th>
+              <th>备注</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const RECORDS_KEY = "gold_records_v1";
+    const OUNCE_TO_GRAM = 31.1034768;
+    const DEFAULT_USDCNY = 7.2;
+    const strategyStatusEl = document.getElementById("strategyStatus");
+    const recordStatusEl = document.getElementById("recordStatus");
+    const budgetEl = document.getElementById("budgetInput");
+    const runButton = document.getElementById("runButton");
+    const dateVal = document.getElementById("dateVal");
+    const priceVal = document.getElementById("priceVal");
+    const maVal = document.getElementById("maVal");
+    const rsiVal = document.getElementById("rsiVal");
+    const biasVal = document.getElementById("biasVal");
+    const suggestedVal = document.getElementById("suggestedVal");
+    const reasonVal = document.getElementById("reasonVal");
+    const recordDateInput = document.getElementById("recordDateInput");
+    const recordAmountInput = document.getElementById("recordAmountInput");
+    const recordPriceInput = document.getElementById("recordPriceInput");
+    const recordGramsInput = document.getElementById("recordGramsInput");
+    const recordNoteInput = document.getElementById("recordNoteInput");
+    const addRecordButton = document.getElementById("addRecordButton");
+    const exportButton = document.getElementById("exportButton");
+    const importButton = document.getElementById("importButton");
+    const importFile = document.getElementById("importFile");
+    const sumInvestedVal = document.getElementById("sumInvestedVal");
+    const sumGramsVal = document.getElementById("sumGramsVal");
+    const avgCostVal = document.getElementById("avgCostVal");
+    const countVal = document.getElementById("countVal");
+    const recordsBody = document.getElementById("recordsBody");
+
+    let priceChart;
+    let rsiChart;
+    let cumulativeChart;
+    let monthlyChart;
+
+    function todayString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function toDateText(timestamp) {
+      const d = new Date(timestamp * 1000);
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function formatYuan(v) {
+      return `¥${Number(v).toFixed(2)}`;
+    }
+
+    function rollingMean(values, window) {
+      const result = new Array(values.length).fill(null);
+      let sum = 0;
+      for (let i = 0; i < values.length; i += 1) {
+        sum += values[i];
+        if (i >= window) sum -= values[i - window];
+        if (i >= window - 1) result[i] = sum / window;
+      }
+      return result;
+    }
+
+    function calculateRSI(closes, window) {
+      const result = new Array(closes.length).fill(null);
+      const deltas = new Array(closes.length).fill(0);
+      for (let i = 1; i < closes.length; i += 1) deltas[i] = closes[i] - closes[i - 1];
+      for (let i = window; i < closes.length; i += 1) {
+        let gain = 0;
+        let loss = 0;
+        for (let j = i - window + 1; j <= i; j += 1) {
+          const delta = deltas[j];
+          if (delta > 0) gain += delta;
+          else loss += -delta;
+        }
+        const avgGain = gain / window;
+        const avgLoss = loss / window;
+        result[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+      }
+      return result;
+    }
+
+    function buildStrategySignal(rsi, bias) {
+      if (rsi < 30 || bias < -0.10) return { multiplier: 2.0, reason: "🚨 触发【超卖/低估】信号，建议双倍定投。" };
+      if (rsi < 40 || bias < -0.05) return { multiplier: 1.5, reason: "📉 触发【相对低估】信号，建议 1.5 倍定投。" };
+      if (rsi > 75 || bias > 0.15) return { multiplier: 0.0, reason: "🔥 触发【极度超买】信号，建议暂停买入。" };
+      if (rsi > 65 || bias > 0.10) return { multiplier: 0.5, reason: "⚠️ 触发【高估】信号，建议减半买入。" };
+      return { multiplier: 1.0, reason: "市场处于正常波动范围，维持基准定投。" };
+    }
+
+    function parseYahooSeries(payload) {
+      const result = payload.chart && payload.chart.result ? payload.chart.result[0] : null;
+      if (!result || !Array.isArray(result.timestamp) || !result.indicators || !result.indicators.quote) throw new Error("行情数据格式异常");
+      const timestamps = result.timestamp;
+      const closeRaw = result.indicators.quote[0].close || [];
+      const points = [];
+      for (let i = 0; i < timestamps.length; i += 1) {
+        const c = closeRaw[i];
+        if (typeof c === "number" && Number.isFinite(c)) points.push({ date: toDateText(timestamps[i]), closeUsdOz: c });
+      }
+      if (points.length < 130) throw new Error("可用行情数据不足");
+      return points;
+    }
+
+    function parseStooqCsv(text) {
+      const lines = String(text || "").trim().split("\n");
+      if (lines.length < 130) throw new Error("可用行情数据不足");
+      const points = [];
+      for (let i = 1; i < lines.length; i += 1) {
+        const parts = lines[i].split(",");
+        if (parts.length < 5) continue;
+        const date = parts[0];
+        const closeUsdOz = Number(parts[4]);
+        if (date && Number.isFinite(closeUsdOz)) points.push({ date, closeUsdOz });
+      }
+      if (points.length < 130) throw new Error("可用行情数据不足");
+      return points;
+    }
+
+    async function fetchGoldSeriesUsdOz() {
+      const attempts = [
+        {
+          name: "Yahoo",
+          run: async () => {
+            const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=1y&interval=1d");
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return parseYahooSeries(await r.json());
+          }
+        },
+        {
+          name: "Yahoo-Proxy",
+          run: async () => {
+            const u = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=1y&interval=1d");
+            const r = await fetch(u);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return parseYahooSeries(await r.json());
+          }
+        },
+        {
+          name: "Stooq-Proxy",
+          run: async () => {
+            const u = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://stooq.com/q/d/l/?s=xauusd&i=d");
+            const r = await fetch(u);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return parseStooqCsv(await r.text());
+          }
+        },
+        {
+          name: "Stooq",
+          run: async () => {
+            const r = await fetch("https://stooq.com/q/d/l/?s=xauusd&i=d");
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return parseStooqCsv(await r.text());
+          }
+        }
+      ];
+      const errors = [];
+      for (const item of attempts) {
+        try {
+          const data = await item.run();
+          return { data, source: item.name };
+        } catch (error) {
+          errors.push(`${item.name}:${error.message || "failed"}`);
+        }
+      }
+      throw new Error(`行情源不可用 ${errors.join(" | ")}`);
+    }
+
+    async function fetchUsdCnyRate() {
+      const attempts = [
+        {
+          name: "ER-API",
+          run: async () => {
+            const r = await fetch("https://open.er-api.com/v6/latest/USD");
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const p = await r.json();
+            const rate = p && p.rates ? Number(p.rates.CNY) : NaN;
+            if (!Number.isFinite(rate) || rate <= 0) throw new Error("Bad rate");
+            return rate;
+          }
+        },
+        {
+          name: "ExchangeRate-API",
+          run: async () => {
+            const r = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const p = await r.json();
+            const rate = p && p.rates ? Number(p.rates.CNY) : NaN;
+            if (!Number.isFinite(rate) || rate <= 0) throw new Error("Bad rate");
+            return rate;
+          }
+        }
+      ];
+      for (const item of attempts) {
+        try {
+          const rate = await item.run();
+          return { rate, source: item.name, fallback: false };
+        } catch (error) {
+        }
+      }
+      return { rate: DEFAULT_USDCNY, source: "DEFAULT", fallback: true };
+    }
+
+    function setRunLoading(isLoading) {
+      runButton.disabled = isLoading;
+      runButton.textContent = isLoading ? "计算中..." : "启动策略计算";
+    }
+
+    function renderStrategyCharts(chartData) {
+      const textColor = "#5d564c";
+      const gridColor = "#ece3cf";
+      const ctx1 = document.getElementById("priceChart");
+      const ctx2 = document.getElementById("rsiChart");
+      if (priceChart) priceChart.destroy();
+      if (rsiChart) rsiChart.destroy();
+
+      priceChart = new Chart(ctx1, {
+        type: "line",
+        data: {
+          labels: chartData.dates,
+          datasets: [
+            { label: "金价（¥/g）", data: chartData.close, borderColor: "#c79735", borderWidth: 2.2, pointRadius: 0, tension: 0.22 },
+            { label: "MA120（¥/g）", data: chartData.ma120, borderColor: "#7e889c", borderWidth: 2, pointRadius: 0, tension: 0.2 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: textColor } } },
+          scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor } } }
+        }
+      });
+
+      rsiChart = new Chart(ctx2, {
+        type: "line",
+        data: {
+          labels: chartData.dates,
+          datasets: [
+            { label: "RSI(14)", data: chartData.rsi, borderColor: "#4a9660", borderWidth: 2, pointRadius: 0, tension: 0.2 },
+            { label: "30", data: new Array(chartData.rsi.length).fill(30), borderColor: "#d16c69", borderDash: [8, 8], pointRadius: 0 },
+            { label: "70", data: new Array(chartData.rsi.length).fill(70), borderColor: "#cd9b57", borderDash: [8, 8], pointRadius: 0 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: textColor } } },
+          scales: {
+            x: { ticks: { color: textColor }, grid: { color: gridColor } },
+            y: { suggestedMin: 0, suggestedMax: 100, ticks: { color: textColor }, grid: { color: gridColor } }
+          }
+        }
+      });
+    }
+
+    async function runCalculation() {
+      const budget = Number(budgetEl.value);
+      if (!budget || budget <= 0) {
+        strategyStatusEl.textContent = "请输入大于 0 的预算。";
+        return;
+      }
+      setRunLoading(true);
+      strategyStatusEl.textContent = "正在拉取行情...";
+      try {
+        const [gold, fx] = await Promise.all([fetchGoldSeriesUsdOz(), fetchUsdCnyRate()]);
+        const points = gold.data;
+        const usdCny = fx.rate;
+        const closes = points.map((p) => p.closeUsdOz * usdCny / OUNCE_TO_GRAM);
+        const dates = points.map((p) => p.date);
+        const ma120 = rollingMean(closes, 120);
+        const rsi14 = calculateRSI(closes, 14);
+        const latestIndex = closes.length - 1;
+        const currentPrice = closes[latestIndex];
+        const ma = ma120[latestIndex];
+        const rsi = rsi14[latestIndex];
+        if (ma === null || rsi === null) throw new Error("技术指标计算失败");
+        const bias = (currentPrice - ma) / ma;
+        const signal = buildStrategySignal(rsi, bias);
+        const suggested = budget * signal.multiplier;
+
+        dateVal.textContent = todayString();
+        priceVal.textContent = formatYuan(currentPrice);
+        maVal.textContent = formatYuan(ma);
+        rsiVal.textContent = rsi.toFixed(2);
+        biasVal.textContent = `${(bias * 100).toFixed(2)}%`;
+        suggestedVal.textContent = formatYuan(suggested);
+        reasonVal.textContent = signal.reason;
+
+        const chartItems = [];
+        for (let i = 0; i < closes.length; i += 1) {
+          if (ma120[i] !== null && rsi14[i] !== null) chartItems.push({ d: dates[i], c: closes[i], m: ma120[i], r: rsi14[i] });
+        }
+        const sliced = chartItems.slice(-180);
+        renderStrategyCharts({
+          dates: sliced.map((x) => x.d),
+          close: sliced.map((x) => Number(x.c.toFixed(2))),
+          ma120: sliced.map((x) => Number(x.m.toFixed(2))),
+          rsi: sliced.map((x) => Number(x.r.toFixed(2)))
+        });
+
+        const fxText = fx.fallback ? `汇率回退到默认值 ${usdCny.toFixed(4)}` : `USD/CNY=${usdCny.toFixed(4)}（${fx.source}）`;
+        strategyStatusEl.textContent = `计算完成｜行情源：${gold.source}｜${fxText}`;
+      } catch (error) {
+        const msg = String(error && error.message ? error.message : error);
+        strategyStatusEl.textContent = `计算失败：${msg.includes("Failed to fetch") ? "请求被浏览器或网络拦截，请稍后重试。" : msg}`;
+      } finally {
+        setRunLoading(false);
+      }
+    }
+
+    function getRecords() {
+      try {
+        const raw = localStorage.getItem(RECORDS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveRecords(records) {
+      localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+    }
+
+    function buildRecordsPayload(records) {
+      const sorted = [...records].sort((a, b) => (a.invest_date > b.invest_date ? 1 : -1));
+      let totalInvested = 0;
+      let totalGrams = 0;
+      const cumulative = [];
+      const dates = [];
+      const monthlyMap = {};
+      for (const item of sorted) {
+        totalInvested += item.amount_cny;
+        if (typeof item.grams === "number") totalGrams += item.grams;
+        dates.push(item.invest_date);
+        cumulative.push(Number(totalInvested.toFixed(2)));
+        const monthKey = item.invest_date.slice(0, 7);
+        monthlyMap[monthKey] = Number(((monthlyMap[monthKey] || 0) + item.amount_cny).toFixed(2));
+      }
+      const avgCost = totalGrams > 0 ? totalInvested / totalGrams : null;
+      return {
+        records: sorted,
+        summary: {
+          record_count: sorted.length,
+          total_invested_cny: Number(totalInvested.toFixed(2)),
+          total_grams: Number(totalGrams.toFixed(4)),
+          average_cost_cny_per_gram: avgCost === null ? null : Number(avgCost.toFixed(4))
+        },
+        chart: {
+          dates,
+          cumulative_invested_cny: cumulative,
+          monthly_labels: Object.keys(monthlyMap),
+          monthly_totals_cny: Object.values(monthlyMap)
+        }
+      };
+    }
+
+    function renderSummary(summary) {
+      sumInvestedVal.textContent = formatYuan(summary.total_invested_cny);
+      sumGramsVal.textContent = `${summary.total_grams.toFixed(4)}g`;
+      avgCostVal.textContent = summary.average_cost_cny_per_gram === null ? "-" : formatYuan(summary.average_cost_cny_per_gram);
+      countVal.textContent = `${summary.record_count}`;
+    }
+
+    function renderRecordsTable(records) {
+      if (!records.length) {
+        recordsBody.innerHTML = `<tr><td colspan="6">暂无记录，先添加第一笔投资。</td></tr>`;
+        return;
+      }
+      recordsBody.innerHTML = records.map((record) => `
+        <tr>
+          <td>${record.invest_date}</td>
+          <td>${Number(record.amount_cny).toFixed(2)}</td>
+          <td>${record.price_cny_per_gram === null ? "-" : Number(record.price_cny_per_gram).toFixed(4)}</td>
+          <td>${record.grams === null ? "-" : Number(record.grams).toFixed(4)}</td>
+          <td>${record.note || "-"}</td>
+          <td><button class="btn btn-danger" data-id="${record.id}">删除</button></td>
+        </tr>
+      `).join("");
+      document.querySelectorAll(".btn-danger").forEach((btn) => btn.addEventListener("click", () => deleteRecord(btn.dataset.id)));
+    }
+
+    function renderRecordCharts(chartData) {
+      const textColor = "#5d564c";
+      const gridColor = "#ece3cf";
+      const ctx3 = document.getElementById("cumulativeChart");
+      const ctx4 = document.getElementById("monthlyChart");
+      if (cumulativeChart) cumulativeChart.destroy();
+      if (monthlyChart) monthlyChart.destroy();
+      cumulativeChart = new Chart(ctx3, {
+        type: "line",
+        data: { labels: chartData.dates, datasets: [{ label: "累计投入（¥）", data: chartData.cumulative_invested_cny, borderColor: "#7b6ccf", borderWidth: 2.2, pointRadius: 2, tension: 0.2 }] },
+        options: { responsive: true, plugins: { legend: { labels: { color: textColor } } }, scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor } } } }
+      });
+      monthlyChart = new Chart(ctx4, {
+        type: "bar",
+        data: { labels: chartData.monthly_labels, datasets: [{ label: "月度投入（¥）", data: chartData.monthly_totals_cny, backgroundColor: "#c8a04d", borderRadius: 8 }] },
+        options: { responsive: true, plugins: { legend: { labels: { color: textColor } } }, scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor } } } }
+      });
+    }
+
+    function loadRecords() {
+      const payload = buildRecordsPayload(getRecords());
+      renderSummary(payload.summary);
+      renderRecordsTable(payload.records);
+      renderRecordCharts(payload.chart);
+      recordStatusEl.textContent = "记录已从当前浏览器加载。";
+    }
+
+    function addRecord() {
+      const investDate = recordDateInput.value;
+      const amount = Number(recordAmountInput.value);
+      const priceRaw = recordPriceInput.value.trim();
+      const gramsRaw = recordGramsInput.value.trim();
+      const note = recordNoteInput.value.trim();
+      if (!investDate) {
+        recordStatusEl.textContent = "请选择投资日期。";
+        return;
+      }
+      if (!amount || amount <= 0) {
+        recordStatusEl.textContent = "请输入大于 0 的投资金额。";
+        return;
+      }
+      let price = null;
+      let grams = null;
+      if (priceRaw !== "") {
+        price = Number(priceRaw);
+        if (!price || price <= 0) {
+          recordStatusEl.textContent = "单价必须大于 0。";
+          return;
+        }
+      }
+      if (gramsRaw !== "") {
+        grams = Number(gramsRaw);
+        if (!grams || grams <= 0) {
+          recordStatusEl.textContent = "克重必须大于 0。";
+          return;
+        }
+      }
+      if (grams === null && price !== null) grams = Number((amount / price).toFixed(6));
+      if (price === null && grams !== null) price = Number((amount / grams).toFixed(6));
+
+      const records = getRecords();
+      records.push({
+        id: `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+        invest_date: investDate,
+        amount_cny: Number(amount.toFixed(2)),
+        grams,
+        price_cny_per_gram: price,
+        note,
+        created_at: new Date().toISOString()
+      });
+      saveRecords(records);
+      recordAmountInput.value = "";
+      recordPriceInput.value = "";
+      recordGramsInput.value = "";
+      recordNoteInput.value = "";
+      loadRecords();
+      recordStatusEl.textContent = "保存成功。";
+    }
+
+    function deleteRecord(id) {
+      saveRecords(getRecords().filter((x) => x.id !== id));
+      loadRecords();
+      recordStatusEl.textContent = "删除成功。";
+    }
+
+    function exportRecords() {
+      const payload = { exported_at: new Date().toISOString(), records: getRecords() };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `gold-records-${todayString()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      recordStatusEl.textContent = "已导出记录文件。";
+    }
+
+    function importRecordsFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || "{}"));
+          const incoming = Array.isArray(parsed.records) ? parsed.records : [];
+          const current = getRecords();
+          const merged = [...current];
+          const existing = new Set(current.map((x) => x.id));
+          for (const item of incoming) {
+            if (!item || typeof item !== "object") continue;
+            const id = item.id || `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+            if (existing.has(id)) continue;
+            existing.add(id);
+            merged.push({
+              id,
+              invest_date: String(item.invest_date || todayString()),
+              amount_cny: Number(item.amount_cny || 0),
+              grams: item.grams === null || item.grams === undefined ? null : Number(item.grams),
+              price_cny_per_gram: item.price_cny_per_gram === null || item.price_cny_per_gram === undefined ? null : Number(item.price_cny_per_gram),
+              note: String(item.note || ""),
+              created_at: String(item.created_at || new Date().toISOString())
+            });
+          }
+          saveRecords(merged.filter((x) => x.amount_cny > 0));
+          loadRecords();
+          recordStatusEl.textContent = "导入成功。";
+        } catch (error) {
+          recordStatusEl.textContent = "导入失败：文件格式错误。";
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    recordDateInput.value = todayString();
+    runButton.addEventListener("click", runCalculation);
+    addRecordButton.addEventListener("click", addRecord);
+    exportButton.addEventListener("click", exportRecords);
+    importButton.addEventListener("click", () => importFile.click());
+    importFile.addEventListener("change", () => {
+      const file = importFile.files && importFile.files[0];
+      if (file) importRecordsFromFile(file);
+      importFile.value = "";
+    });
+    loadRecords();
+  </script>
+</body>
+</html>
